@@ -14,14 +14,9 @@ public class CardView : MonoBehaviour
 
     public SpriteRenderer _cardSprite;
 
-    private int _orderOfLayerOffset;
 
-    public void Init(int order)
+    public void Init()
     {
-        _orderOfLayerOffset = order * 10;
-
-
-
         int mpRan = Random.Range(1, 10);
         int hpRan = Random.Range(1, 10);
         int dmgRan = Random.Range(1, 10);
@@ -30,10 +25,6 @@ public class CardView : MonoBehaviour
         _hpCounter.text = hpRan.ToString();
         _damage.text = dmgRan.ToString();
 
-        foreach (var spriteRenderer in GetComponentsInChildren<SpriteRenderer>())
-        {
-           // spriteRenderer.sortingOrder += _orderOfLayerOffset;
-        }
 
         StartCoroutine(GetTexture());
     }
