@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using DG.Tweening;
 using UnityEditor;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -10,12 +11,13 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance = null;
 
-    [SerializeField] private GameObject _prefab;
-    private List<CardView> _cardView = new List<CardView>();
+    [SerializeField]
+    private GameObject _prefab;
+
     private int _count;
-
-    private const int NUMBER_OF_CARDS = 6;
-
+    private bool _isRepositionProcess;
+    private float _lastClickTime;
+    private List<CardView> _cardView = new List<CardView>();
     private Vector3[] _positionAndRotation = new Vector3[]
     {
         new Vector3(5.7f, -3.04f, -22.25f), new Vector3(4.87f, -2.77f, -15.2f),
@@ -23,6 +25,8 @@ public class GameManager : MonoBehaviour
         new Vector3(1.99f, -2.82f, 13.16f), new Vector3(1.13f, -3.07f, 18.4f),
     };
 
+    private const int NUMBER_OF_CARDS = 6;
+    private const float COOLDOWN_BUTTON = 0.3f;
 
     void Start()
     {
@@ -47,6 +51,17 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        if (_isRepositionProcess)
+        {
+            return;
+        }
+
+        if (Time.time - _lastClickTime < COOLDOWN_BUTTON)
+        {
+            return;
+        }
+
+        _lastClickTime = Time.time;
         CardView currentCard = _cardView[_count];
 
         int characteristicChoice = Random.Range(1, 4);
@@ -99,11 +114,19 @@ public class GameManager : MonoBehaviour
         foreach (var alive in aliveCards)
         {
             (Vector3, Vector3) placeAndAngle = GetBestPlaceForMe(alive.transform.position, alive.transform.eulerAngles);
-            alive.transform.position = placeAndAngle.Item1;
+            if (placeAndAngle.Item1 == alive.transform.position)
+            {
+                return;
+            }
+            _isRepositionProcess = true;
             alive.transform.eulerAngles = placeAndAngle.Item2;
+            alive.transform.DOMove(placeAndAngle.Item1, 0.5f).
+                OnComplete(() => { _isRepositionProcess = false; }).
+                OnPause(() => { _isRepositionProcess = false; }).
+                OnKill(() => { _isRepositionProcess = false; });
+            return;
         }
     }
-
 
     private (Vector3, Vector3) GetBestPlaceForMe(Vector3 myPosition, Vector3 myRotation)
     {
@@ -153,6 +176,7 @@ public class GameManager : MonoBehaviour
 
         return false;
     }
+
     private bool IsSameVector(Vector3 a, Vector3 b)
     {
         if (Mathf.Abs(a.x - b.x) < 0.1f && Mathf.Abs(a.y - b.y) < 0.1f)
@@ -162,7 +186,6 @@ public class GameManager : MonoBehaviour
 
         return false;
     }
-
 
     private bool IsGameOver()
     {
@@ -176,16 +199,20 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
-    void Awake()
+    #region Singleton
+
+    private void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
         }
     }
-
-    void OnDestroy()
+    private void OnDestroy()
     {
         Instance = null;
     }
+
+    #endregion
+
 }

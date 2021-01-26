@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Net.Mime;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -11,20 +13,23 @@ public class CardView : MonoBehaviour
 {
 
     public static event Action CardDied;
-    public TextMesh _cardName;
     [SerializeField]
-    public TextMesh _mpCounter;
+    private TextMesh _cardName;
     [SerializeField]
-    public TextMesh _hpCounter;
+    private TextMesh _mpCounter;
     [SerializeField]
-    public TextMesh _damage;
-
-    public SpriteRenderer _cardSprite;
+    private TextMesh _hpCounter;
+    [SerializeField]
+    private TextMesh _damage;
+    [SerializeField]
+    private SpriteRenderer _cardSprite;
     private const string RANDOM_IMAGE_URL = "https://picsum.photos/190/180";
+    private int _cardNumber;
 
     public bool IsDestroyed { get; private set; }
     public void Init(int cardNumber)
     {
+        _cardNumber = cardNumber;
         int startMP = Random.Range(1, 10);
         int startHP = Random.Range(1, 10);
         int startDamage = Random.Range(1, 10);
@@ -75,8 +80,7 @@ public class CardView : MonoBehaviour
 
     #endregion
 
-
-    void CheckHealth()
+    private void CheckHealth()
     {
         if (GetHealth() < 1)
         {
@@ -86,9 +90,7 @@ public class CardView : MonoBehaviour
         }
     }
 
-
-
-    IEnumerator AnimatedCount(int startValue, int endValue, TextMesh text, Action callback)
+    private IEnumerator AnimatedCount(int startValue, int endValue, TextMesh text, Action callback)
     {
         if (startValue == endValue)
         {
@@ -108,11 +110,15 @@ public class CardView : MonoBehaviour
 
     }
 
-
-
-
-    IEnumerator GetTexture()
+    private IEnumerator GetTexture()
     {
+        if (GetTextureFromCache() != null)
+        {
+            Texture2D myTexture = (Texture2D)GetTextureFromCache();
+            _cardSprite.sprite = Sprite.Create((Texture2D)myTexture, new Rect(0.0f, 0.0f, myTexture.width, myTexture.height), new Vector2(0.5f, 0.5f), 100.0f);
+            yield break;
+        }
+
         UnityWebRequest www = UnityWebRequestTexture.GetTexture(RANDOM_IMAGE_URL);
         yield return www.SendWebRequest();
 
@@ -124,7 +130,29 @@ public class CardView : MonoBehaviour
         {
             Texture myTexture = ((DownloadHandlerTexture)www.downloadHandler).texture;
             _cardSprite.sprite = Sprite.Create((Texture2D)myTexture, new Rect(0.0f, 0.0f, myTexture.width, myTexture.height), new Vector2(0.5f, 0.5f), 100.0f);
+            SaveTextureAsPNG((Texture2D)myTexture);
         }
+    }
+
+
+    private Texture GetTextureFromCache()
+    {
+        string filepath = Application.persistentDataPath + "/" + _cardNumber + ".png";
+        if (!File.Exists(filepath))
+        {
+            return null;
+        }
+        byte[] bytes = System.IO.File.ReadAllBytes(filepath);
+        var texture = new Texture2D(1, 1);
+        texture.LoadImage(bytes);
+        return texture;
+    }
+
+
+    public void SaveTextureAsPNG(Texture2D _texture)
+    {
+        byte[] _bytes = _texture.EncodeToPNG();
+        System.IO.File.WriteAllBytes(Application.persistentDataPath + "/" + _cardNumber + ".png", _bytes);
     }
 
 }
